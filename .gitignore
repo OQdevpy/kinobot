@@ -1,3 +1,14 @@
 venv
 venv/*
 /venv/
+
+/__pycache__/
+# Byte-compiled files
+*.py[cod]
+# C extensions
+*.so
+# Distribution / packaging
+.Python
+# Installer logs
+pip-log.txt
+__pycache__/

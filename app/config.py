@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     publish_channel_link: str = "https://t.me/your_publish_channel"  # Publish channel link
     private_channel_link: str = "https://t.me/your_private_channel"  # Private channel link
 
+    bot_username: str = "your_bot_username"  # Bot username
     
     class Config:
         env_file = ".env"

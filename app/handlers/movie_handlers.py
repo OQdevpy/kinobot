@@ -8,10 +8,11 @@ from aiogram.types import Message, CallbackQuery
 from app.database import DatabaseQueries
 from app.filters.movie_code_filter import MovieCodeFilter
 from app.filters.channel_filter import ChannelSubscriptionFilter
-from app.keyboards.inline_keyboards import get_movie_keyboard, get_subscription_keyboard
+from app.keyboards.inline_keyboards import get_movie_keyboard, get_movie_subscription_keyboard, get_subscription_keyboard, get_subscription_required_keyboard
 from app.utils.movie_manager import send_movie_to_user, check_movie_access
-from app.utils.channel_checker import get_unsubscribed_channels_text
+from app.utils.channel_checker import check_user_channel_subscription, get_unsubscribed_channels_text
 
+from app.config import settings
 router = Router()
 
 
@@ -77,8 +78,15 @@ async def movie_request_no_subscription_handler(message: Message):
             return
         
         # Obuna holatini tekshirish
-        subscription_info = await db_queries.check_user_subscription(user.id)
-        unsubscribed_channels = subscription_info.get_unjoined_channels()
+        active_channels = await db_queries.get_active_channels()
+        unsubscribed_channels = []
+        for channel in active_channels:
+            if not await check_user_channel_subscription(
+                message.bot, 
+                message.from_user.id, 
+                channel.channel_id
+            ):
+                unsubscribed_channels.append(channel)
         
         if unsubscribed_channels:
             # Obuna bo'lmagan kanallar haqida xabar
@@ -87,7 +95,7 @@ async def movie_request_no_subscription_handler(message: Message):
                 unsubscribed_channels
             )
             
-            keyboard = get_subscription_keyboard(unsubscribed_channels)
+            keyboard = get_movie_subscription_keyboard(unsubscribed_channels,movie_code=movie.code)
             
             await message.answer(
                 subscription_text,
@@ -219,21 +227,21 @@ async def share_movie_handler(callback: CallbackQuery):
             return
         
         # Bot username ni olish (real botda o'zgaradi)
-        bot_username = "kinematika_bot"  # Bu qiymatni configdan olish kerak
+        bot_username = settings.BOT_USERNAME
         
         share_text = f"""
 🎬 <b>{movie.title}</b>
 
 📝 Kod: <code>{movie.code}</code>
 
-🤖 Bot: @{bot_username}
+🤖 Bot: https://t.me/{bot_username}?start={movie.code}
 
 💬 <b>Ulashish matni:</b>
 
 🎬 {movie.title} filmini tomosha qiling!
 
 📝 Kod: {movie.code}
-🤖 Bot: @{bot_username}
+🤖 Bot: https://t.me/{bot_username}?start={movie.code}
 
 Ko'rish uchun botga kirib, kodini yuboring! 🍿
 """
@@ -253,46 +261,41 @@ async def rate_movie_handler(callback: CallbackQuery):
 
 @router.callback_query(F.data == "check_subscription")
 async def check_subscription_handler(callback: CallbackQuery):
-    """Obuna holatini qayta tekshirish"""
-    await callback.answer("🔄 Obuna holati tekshirilmoqda...")
+    # """Obuna holatini qayta tekshirish"""
+    # await callback.answer("🔄 Obuna holati tekshirilmoqda...")
     
-    try:
+    # try:
         db_queries = DatabaseQueries()
         user = await db_queries.get_user_by_tg_id(callback.from_user.id)
-        
-        if not user:
-            await callback.message.edit_text("❌ Foydalanuvchi topilmadi.")
-            return
-        
-        # Obuna holatini tekshirish
-        subscription_info = await db_queries.check_user_subscription(user.id)
-        
-        if subscription_info.is_subscribed_to_all():
-            await callback.message.edit_text(
-                "✅ <b>Ajoyib!</b>\n\n"
-                "Siz barcha majburiy kanallarga obuna bo'lgansiz.\n"
-                "Endi kinolarni to'liq tomosha qilishingiz mumkin! 🎬\n\n"
-                "🎯 Kino kodini yuboring yoki menyudan tanlang.",
-                parse_mode="HTML"
+        active_channels = await db_queries.get_active_channels()
+        bot = callback.bot
+
+        unsubscribed_channels = []
+        for channel in active_channels:
+            print(await check_user_channel_subscription(bot, callback.from_user.id, channel.channel_id))
+            if not await check_user_channel_subscription(bot, callback.from_user.id, channel.channel_id):
+                unsubscribed_channels.append(channel)
+        print(f"Unsubscribed channels: {[channel.title for channel in unsubscribed_channels]}")
+        if unsubscribed_channels:
+        # Obuna bo'lmagan kanallar bor
+            keyboard = get_subscription_required_keyboard(unsubscribed_channels)
+
+            await bot.send_message(
+                chat_id=callback.from_user.id,
+                text="⚠️ <b>Obuna talab qilinadi!</b>\n\n"
+                "Bu bot orqali kinolarni tomosha qilish uchun quyidagi kanallarga obuna bo'lishingiz shart.",
+                reply_markup=keyboard,
+                parse_mode="HTML",
+                disable_web_page_preview=True
             )
         else:
-            unsubscribed_channels = subscription_info.get_unjoined_channels()
-            subscription_text = await get_unsubscribed_channels_text(
-                "kinolar", 
-                unsubscribed_channels
-            )
-            
-            keyboard = get_subscription_keyboard(unsubscribed_channels)
-            
-            await callback.message.edit_text(
-                subscription_text,
-                reply_markup=keyboard,
-                parse_mode="HTML"
-            )
+            # Foydalanuvchi barcha kanallarga obuna
+            await callback.message.edit_text("✅ Siz barcha kanallarga obunasiz!\n\n"
+                                              "Endi kinolarni tomosha qilishingiz mumkin.",)
     
-    except Exception as e:
-        await callback.message.edit_text("❌ Tekshirishda xatolik.")
-        print(f"Check subscription error: {e}")
+    # except Exception as e:
+    #     await callback.message.edit_text("❌ Tekshirishda xatolik.")
+    #     print(f"Check subscription error: {e}")
 
 
 @router.message(F.text.regexp(r'^[A-Z0-9_]{3,20}$'))

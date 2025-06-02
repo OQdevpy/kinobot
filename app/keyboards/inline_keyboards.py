@@ -148,9 +148,9 @@ def get_movie_keyboard(movie: Movie) -> InlineKeyboardMarkup:
     """Kino klaviaturasi (asosiy)"""
     
     buttons = [
-        [InlineKeyboardButton(text="🎬 Tomosha qilish", callback_data=f"watch_movie:{movie.id}")],
+        # [InlineKeyboardButton(text="🎬 Tomosha qilish", callback_data=f"watch_movie:{movie.id}")],
         [
-            InlineKeyboardButton(text="ℹ️ Ma'lumot", callback_data=f"movie_info:{movie.id}"),
+            # InlineKeyboardButton(text="ℹ️ Ma'lumot", callback_data=f"movie_info:{movie.id}"),
             InlineKeyboardButton(text="📤 Ulashish", callback_data=f"share_movie:{movie.id}")
         ]
     ]
@@ -164,17 +164,17 @@ def get_subscription_keyboard(channels: List[Channel]) -> InlineKeyboardMarkup:
     buttons = []
     
     # Har bir kanal uchun tugma
-    for channel in channels[:5]:  # Maksimal 5 ta kanal
+    for channel in channels:
         buttons.append([InlineKeyboardButton(
             text=f"📺 {channel.title}",
-            callback_data=f"join_channel:{channel.id}"
+            url=channel.channel_link
         )])
     
-    # Umumiy tugmalar
-    buttons.append([InlineKeyboardButton(
-        text="📺 Barcha kanallarga obuna",
-        callback_data="join_all_channels"
-    )])
+    # # Umumiy tugmalar
+    # buttons.append([InlineKeyboardButton(
+    #     text="📺 Barcha kanallarga obuna",
+    #     callback_data="join_all_channels"
+    # )])
     
     buttons.append([InlineKeyboardButton(
         text="✅ Obunani tekshirish",
@@ -293,12 +293,12 @@ def get_subscription_required_keyboard(channels: List) -> InlineKeyboardMarkup:
     
     buttons = []
     
-    # Barcha kanallarga obuna tugmasi
-    if len(channels) > 1:
-        buttons.append([InlineKeyboardButton(
-            text="📺 Barcha kanallarga obuna",
-            callback_data="join_all_channels"
-        )])
+    # # Barcha kanallarga obuna tugmasi
+    # if len(channels) > 1:
+    #     buttons.append([InlineKeyboardButton(
+    #         text="📺 Barcha kanallarga obuna",
+    #         callback_data="join_all_channels"
+    #     )])
     
     # Har bir kanal uchun tugma
     for channel in channels[:3]:  # Maksimal 3 ta kanal

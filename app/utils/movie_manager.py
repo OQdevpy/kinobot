@@ -33,12 +33,14 @@ async def send_movie_to_user(message: Message, movie: Movie, user: User, db_quer
         # Klaviatura yaratish
         keyboard = get_movie_keyboard(movie)
         
-        # Video yuborish
-        await message.answer_video(
-            video=movie.file_id,
+        await message.bot.copy_message(
+            chat_id=message.chat.id,
+            from_chat_id=settings.private_channel_id,
+            message_id=movie.private_message_id,
             caption=caption,
-            reply_markup=keyboard,
-            parse_mode="HTML"
+            parse_mode="HTML",
+            protect_content=True,
+            # reply_markup=keyboard
         )
         
         # Ko'rish statistikasini qayd etish
@@ -129,6 +131,10 @@ def format_movie_caption(movie: Movie, user: User) -> str:
 💡 Boshqa kinolar uchun kod yuboring yoki /menu bosing.
 
 👤 <b>Tomoshabin:</b> {user.full_name}
+
+https://t.me/{settings.bot_username}?start={movie.code}
+https://t.me/{settings.bot_username}?start={movie.code}
+
 """
     
     return caption

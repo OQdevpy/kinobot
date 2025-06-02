@@ -15,6 +15,7 @@ from app.keyboards.inline_keyboards import (
     get_subscription_required_keyboard
 )
 from app.keyboards.reply_keyboards import get_main_reply_keyboard
+from app.states.user_states import UserStates
 from app.utils.channel_checker import check_user_channel_subscription
 from app.utils.movie_manager import send_movie_to_user, send_movie_to_user_from_private
 
@@ -46,7 +47,8 @@ async def start_handler(message: Message, state: FSMContext):
             await handle_movie_request_with_code(message, user, movie_code, db_queries)
         else:
             # Oddiy start
-            await handle_regular_start(message, user)
+            await state.set_state(UserStates.waiting_search_query)
+            await handle_regular_start(message, user, db_queries)
         
     except Exception as e:
         await message.answer(
@@ -132,7 +134,7 @@ Bu kinoni tomosha qilish uchun quyidagi kanallarga obuna bo'lishingiz shart:
     )
 
 
-async def handle_regular_start(message: Message, user):
+async def handle_regular_start(message: Message, user, db_queries):
     """Oddiy start (kodsiz)"""
     
     is_admin = user.is_admin
@@ -164,15 +166,40 @@ Bu bot orqali siz:
     
     await message.answer(
         text=welcome_text,
-        reply_markup=keyboard,
-        parse_mode="HTML"
+        # reply_markup=keyboard,
+        parse_mode="HTML",
+        keyboard=keyboard if is_admin else None,
     )
+
+    #  get active channels
+
+    active_channels = await db_queries.get_active_channels()
     
+
+    unsubscribed_channels = []
+    for channel in active_channels:
+        is_subscribed = await check_user_channel_subscription(
+            message.bot, user.tg_id, channel.channel_id
+        )
+        if not is_subscribed:
+            unsubscribed_channels.append(channel)
+    
+    if unsubscribed_channels:
+        # Obuna bo'lmagan kanallar bor
+        keyboard = get_subscription_required_keyboard(unsubscribed_channels)
+
+        await message.answer(
+            "⚠️ <b>Obuna talab qilinadi!</b>\n\n"
+            "Bu bot orqali kinolarni tomosha qilish uchun quyidagi kanallarga obuna bo'lishingiz shart.",
+            reply_markup=keyboard,
+            parse_mode="HTML",
+            disable_web_page_preview=True
+        )
     # Reply klaviaturani ham qo'shish
-    await message.answer(
-        "Buyruqlarni tanlash uchun quyidagi tugmalardan foydalaning:",
-        reply_markup=reply_keyboard
-    )
+    # await message.answer(
+    #     "Buyruqlarni tanlash uchun quyidagi tugmalardan foydalaning:",
+    #     reply_markup=reply_keyboard
+    # )
 
 
 @router.callback_query(F.data.startswith("check_subscription_for_movie:"))
