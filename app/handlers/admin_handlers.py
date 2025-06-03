@@ -61,6 +61,44 @@ async def admin_panel_handler(message: Message):
         print(f"Admin panel error: {e}")
 
 
+@router.callback_query(F.data == "admin_panel")
+async def admin_panel_handler(callback: CallbackQuery):
+    """Admin paneli"""
+    db_queries = DatabaseQueries()
+    
+    try:
+        # Admin dashboard ma'lumotlari
+        dashboard_data = await db_queries.get_admin_dashboard_data()
+        stats = dashboard_data['platform_stats']
+        
+        admin_text = f"""
+👑 <b>Admin Panel</b>
+
+📊 <b>Platforma Statistikasi:</b>
+• Foydalanuvchilar: {stats['total_users']}
+• Kinolar: {stats['total_movies']}
+• Kanallar: {stats['active_channels']}
+• Jami ko'rishlar: {stats['total_views']}
+• Bugun faol: {stats['active_users_24h']}
+
+🎯 <b>Nima qilmoqchisiz?</b>
+"""
+        
+        keyboard = get_admin_main_keyboard()
+
+        
+        await callback.message.edit_text(
+            admin_text,
+            reply_markup=keyboard,
+            parse_mode="HTML"
+        )
+        
+        await callback.answer()  # Callback queryni javoblash
+        
+    except Exception as e:
+        await callback.answer("❌ Admin panel yuklashda xatolik.", show_alert=True)
+        print(f"Admin panel error: {e}")
+
 @router.callback_query(F.data == "admin_movies")
 async def admin_movies_handler(callback: CallbackQuery):
     """Kinolar boshqaruvi"""
