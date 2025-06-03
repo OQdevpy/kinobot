@@ -65,7 +65,7 @@ async def admin_panel_handler(message: Message):
 async def admin_panel_handler(callback: CallbackQuery):
     """Admin paneli"""
     db_queries = DatabaseQueries()
-    
+
     try:
         # Admin dashboard ma'lumotlari
         dashboard_data = await db_queries.get_admin_dashboard_data()
